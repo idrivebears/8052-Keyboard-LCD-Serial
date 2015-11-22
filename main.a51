@@ -53,8 +53,8 @@
                 JMP     T2IRS                   ;Go to interrupt routine
 
                 ORG     0040H
-START:          CLR     RW_ENABLE
-                CLR     REGISTER_SELECT
+START:          CLR     RW_ENABLE               ;(E) read write enable on 0
+                CLR     REGISTER_SELECT         ;(RS) register select on 0
                 MOV     IE, #INTERRUPTS         ;enable global interrupt, enable timer 2 interrupt, enable ext1, enable ext0
                 MOV     IP, #00100000b          ;enable highest priority for timer 2
                 MOV     T2CON, #00000000b       ;reset T2 settings
