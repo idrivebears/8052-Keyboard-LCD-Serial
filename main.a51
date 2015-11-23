@@ -42,6 +42,7 @@
                 ;====================================================================
                 SEND_COMMAND_PARAM EQU 50H                                           ;
                 SEND_DATA_PARAM EQU 51H                                              ;
+                SEND_SERIAL_PARAM EQU 52H
                 ;====================================================================
                 
                 ;Flags
@@ -62,14 +63,27 @@
                 ORG     0040H
 START:          CLR     RW_ENABLE               ;(E) read write enable on 0
                 CLR     REGISTER_SELECT         ;(RS) register select on 0
+                
                 MOV     IE, #INTERRUPTS         ;enable global interrupt, enable timer 2 interrupt, enable ext1, enable ext0
+                
                 MOV     IP, #00100000b          ;enable highest priority for timer 2
+                
                 MOV     T2CON, #00000000b       ;reset T2 settings
+                MOV     SCON,  #01000000b       ;set serial control settings
+                
+                ;Set timer 1 config
+                MOV     TMOD,  #00100000b       ;set timer 1 to 8bit auto reload
+                MOV     ACC, PCON               ;Get current pcon config
+                SETB    ACC.7                   ;enable PCON.7 (double the baudrate)    
+                MOV     PCON, ACC               ;set PCON again
+                MOV     TH1, 253d               ;set baudrate to 19200 256 - ((Crystal/192)/Baud) = 256 - (11059000/192)/19200 = 256 - 3 - 253
+                
+                
 
                 MOV     TICKCOUNT_1, #0d            ;reset tick count for all counters
                 MOV     DEBOUNCER_COUNT, #0d
                 MOV     BUTTON_COUNT, #2d
-                MOV     SECOND_COUNT, #20d
+                MOV     SECOND_COUNT, #0d
                 MOV     CHARACTER_COUNT, #0d
                 
                 CLR     IS_NEXT_LINE                 ;set is_next_line to false
@@ -111,6 +125,7 @@ EXIT_T2IRS:     POP     ACC                  ;return ACC
                 RETI
 ;Tick subroutine, called every 50 ms
 TICK:           INC TICKCOUNT_1
+                INC SECOND_COUNT
                 RET
 
 ;Triggered every ext0 interrupt
@@ -130,6 +145,7 @@ EXT1IRS:        PUSH    PSW                ; save status before entering interru
                 PUSH    ACC
                 CLR     EX0
                 CLR     EX1
+                ACALL   SEND_PRESSED
 EXIT_EXT1IRS:   POP     ACC                ; load status after interrupt
                 POP     PSW
                 SETB    EX0                ; reenable ext0 interrupt
@@ -198,7 +214,7 @@ DC_EXIT:        RET
 ; ALT INPUT ROUTINE
 ; SENDS HEXADECIMAL VALUE TO THE DISPLAY
 ; ===============================================================
-ALT_INPUT:      DJNZ    BUTTON_COUNT, REG_BUTTON1             ; if the count is not zero, save the button value
+ALT_INPUT:      DJNZ    BUTTON_COUNT, REG_BUTTON             ; if the count is not zero, save the button value
                 MOV     A, KEYPAD_VALUE                      ; if it is zero, send the value to screen
                 SWAP    A
                 MOV     KEYPAD_VALUE, A                      ; move keypad value to Acc for nibble swap
@@ -207,15 +223,38 @@ ALT_INPUT:      DJNZ    BUTTON_COUNT, REG_BUTTON1             ; if the count is 
                 MOV     SEND_DATA_PARAM, KEYPAD_VALUE        ; set parameter value
                 ACALL   SEND_DATA                            ; send data to LCD
                 JMP     AI_EXIT                              ; exit
-REG_BUTTON1:    MOV     KEYPAD_VALUE, #LOW(P2)               ; save
+REG_BUTTON:     MOV     KEYPAD_VALUE, #LOW(P2)               ; save
 AI_EXIT:        RET
 
 ; WAIT 1 SECOND ROUTINE
 ; WAITS 1 SECOND, ALL OTHER ROUTINES STOPPED, EXCEPT TIMER
 ; ================================================================
-WAIT_1S:        DJNZ    SECOND_COUNT, $                      ;wait til counter is 0
-                MOV     SECOND_COUNT, #20d                   ;reset counter
+WAIT_1S:        MOV     SECOND_COUNT, #0d                    ;reset counter
+RCK:            MOV     A, SECOND_COUNT
+                CJNE    A, #20d, RCK                         ;count to 20 for 1s 
                 RET                                          ;return 
+                
+                
+;SEND PRESSED ROUTINE || Send Push button has been pressed, interrupt enabled.
+;sends all data from LCD display to serial, suing send_serial routine
+;=================================================================
+SEND_PRESSED:   MOV     TICKCOUNT_1, #0d
+SPRCK:          MOV     A, TICKCOUNT_1
+                CJNE    A, 2d, SPRCK                ;debounce button
+                ;read first byte from LCD to SEND_SERIAL_PARAM
+                ;call SEND_SERIAL
+                ;repeat until done
+                RET
+                
+                
+; SEND SERIAL DATA SUBROUTINE
+; SENDS BYTE STORED IN SEND_SERIAL_PARAM
+; ================================================================
+SEND_SERIAL:    SETB    TI                                  ;set flag on
+                MOV     SBUF, SEND_SERIAL_PARAM             ;move value to serial buffer
+                CLR     TI
+                JNB     TI, $                               ;jump if byte is not done sending
+                RET
 
 
 END
