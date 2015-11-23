@@ -47,7 +47,7 @@
 				
 				;Table for values:
 				;====================================================================
-				TABLE_START EQU 60H
+				TABLE_START EQU 41H
                 
                 ;Flags
                 IS_NEXT_LINE EQU 20H.1          ;indicates if the LCD is already on the next line   
@@ -91,6 +91,8 @@ START:          CLR     RW_ENABLE               ;(E) read write enable on 0
                 MOV     CHARACTER_COUNT, #0d
                 
                 CLR     IS_NEXT_LINE                 ;set is_next_line to false
+				
+				MOV		TABLE_START, #60H			;set value of table start to 60H
                 
 
                 SETB    GREEN_LED
@@ -113,6 +115,9 @@ START:          CLR     RW_ENABLE               ;(E) read write enable on 0
 
                 MOV     SEND_COMMAND_PARAM, #0FH    ;initialize display
                 ACALL   SEND_COMMAND
+				
+				MOV		SEND_COMMAND_PARAM, #0C0H 	;test new line select
+				ACALL	SEND_COMMAND
 
                 JMP     $                           ;wait for interrupts
 
@@ -159,22 +164,22 @@ EXIT_EXT1IRS:   POP     ACC                ; load status after interrupt
                 RETI
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;ROUTINES;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-INIT_TABLE:		MOV		50H, #31H
-				MOV		51H, #32H
-				MOV		52H, #33H
-				MOV		53H, #41H
-				MOV		54H, #34H
-				MOV		55H, #35H
-				MOV		56H, #36H
-				MOV		57H, #42H
-				MOV		58H, #37H
-				MOV		59H, #38H
-				MOV		5AH, #49H
-				MOV		5BH, #43H
-				MOV		5CH, #2AH
-				MOV		5DH, #30H
-				MOV		5EH, #23H
-				MOV		5FH, #44H
+INIT_TABLE:		MOV		60H, #31H	;1
+				MOV		61H, #32H	;2
+				MOV		62H, #33H	;3
+				MOV		63H, #41H	;A	
+				MOV		64H, #34H	;4
+				MOV		65H, #35H	;5
+				MOV		66H, #36H	;6
+				MOV		67H, #42H	;B
+				MOV		68H, #37H	;7
+				MOV		69H, #38H	;8
+				MOV		6AH, #39H	;9
+				MOV		6BH, #43H	;C
+				MOV		6CH, #2AH	;*
+				MOV		6DH, #30H	;0
+				MOV		6EH, #23H	;#
+				MOV		6FH, #44H	;D
 				RET
 
 
@@ -207,17 +212,20 @@ MOV_AG2:        MOV     A, TICKCOUNT_1
                 CLR     RW_ENABLE                         ; deactivate write
                 SETB    GREEN_LED
                 RET
+
 ; BUTTON PRESSED ROUTINE
 ; SENDS THE DIRECT VALUE OF THE KEY PRESSED TO THE DISPLAY
 ; ===============================================================
-BUTTON_PRESSED: MOV     KEYPAD_VALUE, #LOW(P2)               ; save value of keypressed
+BUTTON_PRESSED: MOV     A, P2  			                     ; save value of keypressed into A
+				ANL		A, #0Fh								 ; do bitwise and with 0F to get only important 4 bits
+				MOV		KEYPAD_VALUE, A					     ; move value of A into keypad_value
 				MOV		A, TABLE_START					     ; move value of table start to A (50H at moment of writing)
 				ADD		A, KEYPAD_VALUE					     ; add registered keypad value to A
-				MOV		R0, A							     ; move value to R0 so we can use as pointer and get table value
-                MOV     SEND_DATA_PARAM, @R0		         ; set parameter value to value pointed by R0 value
+				MOV		R1, A							     ; move value to R0 so we can use as pointer and get table value
+                MOV     SEND_DATA_PARAM, @R1		         ; set parameter value to value pointed by R0 value
                 ACALL   DISPLAY_CHECK                        ; check if cursor needs moving
                 ACALL   SEND_DATA                            ; send data to LCD
-                ACALL   WAIT_500MS                           ; wait 1s for the hell of it 
+                ACALL   WAIT_500MS                           ; wait 500ms for the hell of it 
 BP_EXIT:        RET
 
 ; DISPLAY CHECK ROUTINE
@@ -226,17 +234,17 @@ BP_EXIT:        RET
 ; uses CHARACTER_COUNT
 DISPLAY_CHECK:  INC     CHARACTER_COUNT                     ;new character added to screen
                 MOV     A, CHARACTER_COUNT                  ;move for comparison
-                CJNE    A, #15d, DC_EXIT                    ;if the cursor doesnt need moving, continue as usual
+                CJNE    A, #16d, DC_EXIT                    ;if the cursor doesnt need moving, continue as usual
                 MOV     CHARACTER_COUNT, #0d                ;reset character line count
                 JBC     IS_NEXT_LINE, CLR_DISP              ;if its already on the next line, clear display
                 SETB    IS_NEXT_LINE                        ;set isnextline to true
-                MOV     SEND_COMMAND_PARAM, #0C0H           ;send command for moving cursor to next line
+                MOV     SEND_COMMAND_PARAM, #11000000b      ;send command for moving cursor to next line
                 ACALL   SEND_COMMAND
+				ACALL	WAIT_500MS
                 JMP     DC_EXIT
                 
 CLR_DISP:       MOV     SEND_COMMAND_PARAM, #01H            ;send command for clearing screen and returning cursor    
-                ACALL   SEND_COMMAND
-               
+                ACALL   SEND_COMMAND             
 DC_EXIT:        RET
 
 ; ALT INPUT ROUTINE
