@@ -11,6 +11,10 @@
 ;P2.6          Senal RS de LCD
 ;P1            Datos LCD
 
+; use command 01 for clearing display
+; use command 80 for first line of display
+; use command C0 for second line of display
+
                 T2CON EQU 0C8H               ;T2CON registry location
                 RCAP2H EQU 0CBH              ;reload value for t2 location high
                 RCAP2L EQU 0CAH              ;reload value for t2 location low
@@ -22,8 +26,8 @@
 
                 TICKCOUNT_1 EQU 3AH             ;Tick counter for refreshing displays
                 BUTTON_COUNT EQU 3BH             ;Tick counter for buttons
-                TICKCOUNT_250_1 EQU 3CH         ;Tick counter for seconds 1
-                TICKCOUNT_250_2 EQU 3DH         ;Tick counter for seconds 2
+                SECOND_COUNT EQU 3CH         ;Tick counter for seconds 1
+                CHARACTER_COUNT EQU 3DH         ;Tick counter for seconds 2
                 DEBOUNCER_COUNT EQU  3EH        ;Counter for debouncer, 20 ms
 
                 REGISTER_SELECT EQU P2.7        ;RS LCD select signal
@@ -39,6 +43,9 @@
                 SEND_COMMAND_PARAM EQU 50H                                           ;
                 SEND_DATA_PARAM EQU 51H                                              ;
                 ;====================================================================
+                
+                ;Flags
+                IS_NEXT_LINE EQU 20H.1          ;indicates if the LCD is already on the next line   
 
                 ORG     0000H                   ;RESET INTERRUPT
                 JMP     START                   ;go to start on reset
@@ -61,7 +68,12 @@ START:          CLR     RW_ENABLE               ;(E) read write enable on 0
 
                 MOV     TICKCOUNT_1, #0d            ;reset tick count for all counters
                 MOV     DEBOUNCER_COUNT, #0d
-                mov     BUTTON_COUNT, #2d
+                MOV     BUTTON_COUNT, #2d
+                MOV     SECOND_COUNT, #20d
+                MOV     CHARACTER_COUNT, #0d
+                
+                CLR     IS_NEXT_LINE                 ;set is_next_line to false
+                
 
                 SETB    GREEN_LED
 
@@ -154,8 +166,39 @@ MOV_AG2:        MOV     A, TICKCOUNT_1
                 CLR     RW_ENABLE                         ; deactivate write
                 SETB    GREEN_LED
                 RET
+; BUTTON PRESSED ROUTINE
+; SENDS THE DIRECT VALUE OF THE KEY PRESSED TO THE DISPLAY
+; ===============================================================
+BUTTON_PRESSED: MOV     KEYPAD_VALUE, #LOW(P2)               ; save
+                MOV     SEND_DATA_PARAM, KEYPAD_VALUE        ; set parameter value
+                ACALL   DISPLAY_CHECK                        ; check if cursor needs moving
+                ACALL   SEND_DATA                            ; send data to LCD
+                ACALL   WAIT_1S                              ; wait 1s for the hell of it 
+BP_EXIT:        RET
 
-BUTTON_PRESSED: DJNZ    BUTTON_COUNT, REG_BUTTON             ; if the count is not zero, save the button value
+; DISPLAY CHECK ROUTINE
+; Check the display, if a new line is needed, moves the cursor to new line,
+; if both lines are full, clear screen.
+; uses CHARACTER_COUNT
+DISPLAY_CHECK:  INC     CHARACTER_COUNT                     ;new character added to screen
+                MOV     A, CHARACTER_COUNT                  ;move for comparison
+                CJNE    A, #20d, DC_EXIT                    ;if the cursor doesnt need moving, continue as usual
+                MOV     CHARACTER_COUNT, #0d                ;reset character line count
+                JBC     IS_NEXT_LINE, CLR_DISP              ;if its already on the next line, clear display
+                SETB    IS_NEXT_LINE                        ;set isnextline to true
+                MOV     SEND_COMMAND_PARAM, #0C0H           ;send command for moving cursor to next line
+                ACALL   SEND_COMMAND
+                JMP     DC_EXIT
+                
+CLR_DISP:       MOV     SEND_COMMAND_PARAM, #01H            ;send command for clearing screen and returning cursor    
+                ACALL   SEND_COMMAND
+               
+DC_EXIT:        RET
+
+; ALT INPUT ROUTINE
+; SENDS HEXADECIMAL VALUE TO THE DISPLAY
+; ===============================================================
+ALT_INPUT:      DJNZ    BUTTON_COUNT, REG_BUTTON1             ; if the count is not zero, save the button value
                 MOV     A, KEYPAD_VALUE                      ; if it is zero, send the value to screen
                 SWAP    A
                 MOV     KEYPAD_VALUE, A                      ; move keypad value to Acc for nibble swap
@@ -163,9 +206,16 @@ BUTTON_PRESSED: DJNZ    BUTTON_COUNT, REG_BUTTON             ; if the count is n
                 MOV     BUTTON_COUNT, #2d                    ; reset button count
                 MOV     SEND_DATA_PARAM, KEYPAD_VALUE        ; set parameter value
                 ACALL   SEND_DATA                            ; send data to LCD
-                JMP     BP_EXIT                              ; exit
-REG_BUTTON:     MOV     KEYPAD_VALUE, #LOW(P2)               ; save
-BP_EXIT:        RET
+                JMP     AI_EXIT                              ; exit
+REG_BUTTON1:    MOV     KEYPAD_VALUE, #LOW(P2)               ; save
+AI_EXIT:        RET
+
+; WAIT 1 SECOND ROUTINE
+; WAITS 1 SECOND, ALL OTHER ROUTINES STOPPED, EXCEPT TIMER
+; ================================================================
+WAIT_1S:        DJNZ    SECOND_COUNT, $                      ;wait til counter is 0
+                MOV     SECOND_COUNT, #20d                   ;reset counter
+                RET                                          ;return 
 
 
 END
