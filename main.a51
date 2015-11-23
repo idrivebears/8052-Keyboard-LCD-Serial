@@ -198,7 +198,7 @@ BP_EXIT:        RET
 ; uses CHARACTER_COUNT
 DISPLAY_CHECK:  INC     CHARACTER_COUNT                     ;new character added to screen
                 MOV     A, CHARACTER_COUNT                  ;move for comparison
-                CJNE    A, #20d, DC_EXIT                    ;if the cursor doesnt need moving, continue as usual
+                CJNE    A, #15d, DC_EXIT                    ;if the cursor doesnt need moving, continue as usual
                 MOV     CHARACTER_COUNT, #0d                ;reset character line count
                 JBC     IS_NEXT_LINE, CLR_DISP              ;if its already on the next line, clear display
                 SETB    IS_NEXT_LINE                        ;set isnextline to true
