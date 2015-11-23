@@ -44,6 +44,10 @@
                 SEND_DATA_PARAM EQU 51H                                              ;
                 SEND_SERIAL_PARAM EQU 52H
                 ;====================================================================
+				
+				;Table for values:
+				;====================================================================
+				TABLE_START EQU 60H
                 
                 ;Flags
                 IS_NEXT_LINE EQU 20H.1          ;indicates if the LCD is already on the next line   
@@ -101,6 +105,8 @@ START:          CLR     RW_ENABLE               ;(E) read write enable on 0
                 MOV     SEND_COMMAND_PARAM, #00H
 
                 MOV     T2CON, #00000100b           ;Start T2
+				
+				ACALL 	INIT_TABLE
 
                 MOV     SEND_COMMAND_PARAM, #01H    ;clear display command
                 ACALL   SEND_COMMAND
@@ -153,6 +159,25 @@ EXIT_EXT1IRS:   POP     ACC                ; load status after interrupt
                 RETI
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;ROUTINES;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+INIT_TABLE:		MOV		50H, #31H
+				MOV		51H, #32H
+				MOV		52H, #33H
+				MOV		53H, #41H
+				MOV		54H, #34H
+				MOV		55H, #35H
+				MOV		56H, #36H
+				MOV		57H, #42H
+				MOV		58H, #37H
+				MOV		59H, #38H
+				MOV		5AH, #49H
+				MOV		5BH, #43H
+				MOV		5CH, #2AH
+				MOV		5DH, #30H
+				MOV		5EH, #23H
+				MOV		5FH, #44H
+				RET
+
+
 ;SEND_COMMAND
 ;TAKES: SEND_COMMAND_PARAM
 ;RUN Display routine for the LCD display
@@ -185,11 +210,14 @@ MOV_AG2:        MOV     A, TICKCOUNT_1
 ; BUTTON PRESSED ROUTINE
 ; SENDS THE DIRECT VALUE OF THE KEY PRESSED TO THE DISPLAY
 ; ===============================================================
-BUTTON_PRESSED: MOV     KEYPAD_VALUE, #LOW(P2)               ; save
-                MOV     SEND_DATA_PARAM, KEYPAD_VALUE        ; set parameter value
+BUTTON_PRESSED: MOV     KEYPAD_VALUE, #LOW(P2)               ; save value of keypressed
+				MOV		A, TABLE_START					     ; move value of table start to A (50H at moment of writing)
+				ADD		A, KEYPAD_VALUE					     ; add registered keypad value to A
+				MOV		R0, A							     ; move value to R0 so we can use as pointer and get table value
+                MOV     SEND_DATA_PARAM, @R0		         ; set parameter value to value pointed by R0 value
                 ACALL   DISPLAY_CHECK                        ; check if cursor needs moving
                 ACALL   SEND_DATA                            ; send data to LCD
-                ACALL   WAIT_1S                              ; wait 1s for the hell of it 
+                ACALL   WAIT_500MS                           ; wait 1s for the hell of it 
 BP_EXIT:        RET
 
 ; DISPLAY CHECK ROUTINE
@@ -226,13 +254,13 @@ ALT_INPUT:      DJNZ    BUTTON_COUNT, REG_BUTTON             ; if the count is n
 REG_BUTTON:     MOV     KEYPAD_VALUE, #LOW(P2)               ; save
 AI_EXIT:        RET
 
-; WAIT 1 SECOND ROUTINE
-; WAITS 1 SECOND, ALL OTHER ROUTINES STOPPED, EXCEPT TIMER
+; WAIT 500 MS ROUTINE
+; WAITS 500 MS, ALL OTHER ROUTINES STOPPED, EXCEPT TIMER
 ; ================================================================
-WAIT_1S:        MOV     SECOND_COUNT, #0d                    ;reset counter
+WAIT_500MS:     MOV     SECOND_COUNT, #0d                    ;reset counter
 RCK:            MOV     A, SECOND_COUNT
                 CJNE    A, #20d, RCK                         ;count to 20 for 1s 
-                RET                                          ;return 
+                RET                                          ;return
                 
                 
 ;SEND PRESSED ROUTINE || Send Push button has been pressed, interrupt enabled.
