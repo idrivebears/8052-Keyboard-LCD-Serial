@@ -29,6 +29,7 @@
                 SECOND_COUNT EQU 3CH         ;Tick counter for seconds 1
                 CHARACTER_COUNT EQU 3DH         ;Tick counter for seconds 2
                 DEBOUNCER_COUNT EQU  3EH        ;Counter for debouncer, 20 ms
+				TEMP_VAR EQU 3FH
 
                 REGISTER_SELECT EQU P2.7        ;RS LCD select signal
                 RW_ENABLE EQU P2.6              ;read write enable LCD signal
@@ -55,11 +56,11 @@
                 ORG     0000H                   ;RESET INTERRUPT
                 JMP     START                   ;go to start on reset
 
-                ORG     0003H                   ;EXT0 INTERRUPT SWITCH BUTTON
+                ORG     0003H                   ;EXT0 INTERRUPT KEYPAD PRESSED
                 JMP     EXT0IRS
 
-                ORG     0013H                   ;EXT1 INTERRUPT EDIT BUTTON
-                ;JMP     EXT1IRS
+                ORG     0013H                   ;EXT1 INTERRUPT SEND BUTTON
+                JMP     EXT1IRS
 
                 ORG     002BH                   ;T2 INTERRUPT
                 JMP     T2IRS                   ;Go to interrupt routine
@@ -269,19 +270,29 @@ AI_EXIT:        RET
 ; ================================================================
 WAIT_500MS:     MOV     SECOND_COUNT, #0d                    ;reset counter
 RCK:            MOV     A, SECOND_COUNT
-                CJNE    A, #20d, RCK                         ;count to 20 for 1s 
+                CJNE    A, #10d, RCK                         ;count to 10 for 500ms 
                 RET                                          ;return
                 
                 
 ;SEND PRESSED ROUTINE || Send Push button has been pressed, interrupt enabled.
-;sends all data from LCD display to serial, suing send_serial routine
+;sends all data from LCD display to serial, using send_serial routine
 ;=================================================================
 SEND_PRESSED:   MOV     TICKCOUNT_1, #0d
 SPRCK:          MOV     A, TICKCOUNT_1
                 CJNE    A, 2d, SPRCK                ;debounce button
                 
+				MOV		R1, #40H					;move 40H, beginning of internal memory where LCD vals are stored
+				MOV		A, #40H						;move 40H to A so we can use this to calculate the final position of memory to be sent
+				ADD		A, CHARACTER_COUNT			;add character count to get end position
+				JNB		IS_NEXT_LINE, AG			;if bit is not set, all good
+				ADD		A, #16d						;if the isnextline flag is up, we are on the snd line, add 16
+AG:				MOV		TEMP_VAR, A
 				
-				
+LOOP_SRL:		MOV		SEND_SERIAL_PARAM, @R1		;move the value pointed by R1 to serial send parameter
+				ACALL	SEND_SERIAL					;send character
+				INC		R1							;increment pointer
+				MOV	 	A, R1
+				CJNE	A, TEMP_VAR, LOOP_SRL		;keep going until all characters are sent
                 RET
                 
                 
