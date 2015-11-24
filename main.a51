@@ -111,7 +111,8 @@ START:          CLR     RW_ENABLE               ;(E) read write enable on 0
 
                 MOV     T2CON, #00000100b           ;Start T2
 				
-				ACALL 	INIT_TABLE
+				ACALL 	INIT_TABLE					;init normal value table
+				ACALL 	INIT_TABLE2					;init hex value table
 				
 				MOV		R0, #40H					;move 40H to R0 to use as pointer
 
@@ -190,6 +191,23 @@ INIT_TABLE:		MOV		60H, #31H	;1
 				MOV		6FH, #44H	;D
 				RET
 
+INIT_TABLE2:    MOV		70H, #1d	
+				MOV		71H, #2d
+				MOV		72H, #3d
+				MOV		73H, #0AH
+				MOV		74H, #4d
+				MOV		75H, #5d
+				MOV		76H, #6d
+				MOV		77H, #0BH
+				MOV		78H, #7d
+				MOV		79H, #8d
+				MOV		7AH, #9d
+				MOV		7BH, #0CH
+				MOV		7CH, #0FH
+				MOV		7DH, #0d
+				MOV		7EH, #0EH
+				MOV		7FH, #0DH
+				RET	
 
 ;SEND_COMMAND
 ;TAKES: SEND_COMMAND_PARAM
@@ -224,7 +242,8 @@ MOV_AG2:        MOV     A, TICKCOUNT_1
 ; BUTTON PRESSED ROUTINE
 ; SENDS THE DIRECT VALUE OF THE KEY PRESSED TO THE DISPLAY
 ; ===============================================================
-BUTTON_PRESSED: JB		ALT_BUTTON, 
+BUTTON_PRESSED: JB		ALT_BUTTON, ALT_ROUTINE
+				MOV		BUTTON_COUNT, #2d
 				MOV     A, P2  			                     ; save value of keypressed into A
 				ANL		A, #0Fh								 ; do bitwise and with 0F to get only important 4 bits
 				MOV		KEYPAD_VALUE, A					     ; move value of A into keypad_value
@@ -234,10 +253,35 @@ BUTTON_PRESSED: JB		ALT_BUTTON,
                 MOV     SEND_DATA_PARAM, @R1		         ; set parameter value to value pointed by R0 value
                 ACALL   DISPLAY_CHECK                        ; check if cursor needs moving
                 ACALL   SEND_DATA                            ; send data to LCD
-				MOV		A, @R1								 ; get the value sent to the LCD, move to A
-				MOV		@R0, A								 ; send that value to the location pointed by R0
+				;MOV		A, @R1								 ; get the value sent to the LCD, move to A
+				;MOV		@R0, A								 ; send that value to the location pointed by R0
 				INC		R0									 ; increment pointer
-                ACALL   WAIT_500MS                           ; wait 500ms for the hell of it 
+                ;ACALL   WAIT_500MS                           ; wait 500ms for the hell of it 
+				JMP		BP_EXIT
+				
+ALT_ROUTINE:	DJNZ	BUTTON_COUNT, REG_KEY				 ;
+				MOV		BUTTON_COUNT, #2d					 ; reset button count
+				MOV		A, P2    						     ; get key pressed from port 2
+				ANL		A, #0Fh								 ; use AND to clear trash
+				ADD		A, #70H
+				MOV		R1, A
+				MOV		A, @R1
+				ORL		A, KEYPAD_VALUE						 ; do OR with KEYPAD_VALUE to combine both numbers
+				MOV		SEND_DATA_PARAM, A					 ; 
+				ACALL 	DISPLAY_CHECK						 
+				ACALL	SEND_DATA							 ; send number
+				INC		R0
+				ACALL	WAIT_500MS
+				JMP 	BP_EXIT
+
+REG_KEY:		MOV		A, P2								 ; save value of key pressed to A
+				ANL		A, #0Fh								 ; clean byte
+				ADD		A, #70H								 ; add 70H to A, 70H is the first position of value table #2
+				MOV		R1, A								 ; use R1 as pointer for table
+				MOV		A, @R1								 ; 
+				SWAP	A									 ; swap nibbles so we can build a full byte
+				MOV		KEYPAD_VALUE, A						 ; save to keypad_value
+				ACALL	WAIT_500MS
 BP_EXIT:        RET
 
 ; DISPLAY CHECK ROUTINE
@@ -246,41 +290,27 @@ BP_EXIT:        RET
 ; uses CHARACTER_COUNT
 DISPLAY_CHECK:  INC     CHARACTER_COUNT                     ;new character added to screen
                 MOV     A, CHARACTER_COUNT                  ;move for comparison
-                CJNE    A, #16d, DC_EXIT                    ;if the cursor doesnt need moving, continue as usual
+                CJNE    A, #17d, DC_EXIT                    ;if the cursor doesnt need moving, continue as usual
                 MOV     CHARACTER_COUNT, #0d                ;reset character line count
                 JBC     IS_NEXT_LINE, CLR_DISP              ;if its already on the next line, clear display
                 SETB    IS_NEXT_LINE                        ;set isnextline to true
-                MOV     SEND_COMMAND_PARAM, #0C0H            ;send command for moving cursor to next line
+                MOV     SEND_COMMAND_PARAM, #0C0H           ;send command for moving cursor to next line
                 ACALL   SEND_COMMAND
                 JMP     DC_EXIT
 CLR_DISP:       MOV     SEND_COMMAND_PARAM, #01H            ;send command for clearing screen and returning cursor    
                 ACALL   SEND_COMMAND
 				MOV		R0, #40H							;reset R0 pointer
+				MOV		CHARACTER_COUNT, #0d			    ;reset character count
 DC_EXIT:        ACALL	WAIT_500MS
 				RET
-
-; ALT INPUT ROUTINE
-; SENDS HEXADECIMAL VALUE TO THE DISPLAY
-; ===============================================================
-ALT_INPUT:      DJNZ    BUTTON_COUNT, REG_BUTTON             ; if the count is not zero, save the button value
-                MOV     A, KEYPAD_VALUE                      ; if it is zero, send the value to screen
-                SWAP    A
-                MOV     KEYPAD_VALUE, A                      ; move keypad value to Acc for nibble swap
-                MOV     KEYPAD_VALUE, #LOW(P2)               ; load value of keypad into next 4 bits
-                MOV     BUTTON_COUNT, #2d                    ; reset button count
-                MOV     SEND_DATA_PARAM, KEYPAD_VALUE        ; set parameter value
-                ACALL   SEND_DATA                            ; send data to LCD
-                JMP     AI_EXIT                              ; exit
-REG_BUTTON:     MOV     KEYPAD_VALUE, #LOW(P2)               ; save
-AI_EXIT:        RET
 
 ; WAIT 500 MS ROUTINE
 ; WAITS 500 MS, ALL OTHER ROUTINES STOPPED, EXCEPT TIMER
 ; ================================================================
 WAIT_500MS:     MOV     SECOND_COUNT, #0d                    ;reset counter
 RCK:            MOV     A, SECOND_COUNT
-                CJNE    A, #5d, RCK                         ;count to 10 for 250ms 
-                RET                                          ;return
+                CJNE    A, #1d, RCK                         ;count to 10 for 100ms 
+                RET                                          
                 
                 
 ;SEND PRESSED ROUTINE || Send Push button has been pressed, interrupt enabled.
@@ -303,7 +333,6 @@ LOOP_SRL:		MOV		SEND_SERIAL_PARAM, @R1		;move the value pointed by R1 to serial 
 				MOV	 	A, R1
 				CJNE	A, TEMP_VAR, LOOP_SRL		;keep going until all characters are sent
                 RET
-                
                 
 ; SEND SERIAL DATA SUBROUTINE
 ; SENDS BYTE STORED IN SEND_SERIAL_PARAM
