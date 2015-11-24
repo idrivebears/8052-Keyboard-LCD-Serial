@@ -25,8 +25,8 @@
                 INTERRUPTS EQU 10100101b        ;Interrupt flags, Global, Timer2, Button1, Button0
 
                 TICKCOUNT_1 EQU 3AH             ;Tick counter for refreshing displays
-                BUTTON_COUNT EQU 3BH             ;Tick counter for buttons
-                SECOND_COUNT EQU 3CH         ;Tick counter for seconds 1
+                BUTTON_COUNT EQU 3BH            ;Tick counter for buttons
+                SECOND_COUNT EQU 3CH            ;Tick counter for seconds 1
                 CHARACTER_COUNT EQU 3DH         ;Tick counter for seconds 2
                 DEBOUNCER_COUNT EQU  3EH        ;Counter for debouncer, 20 ms
 				TEMP_VAR EQU 3FH
@@ -76,15 +76,17 @@ START:          CLR     RW_ENABLE               ;(E) read write enable on 0
                 MOV     IP, #00100000b          ;enable highest priority for timer 2
                 
                 MOV     T2CON, #00000000b       ;reset T2 settings
-                MOV     SCON,  #01000000b       ;set serial control settings
-                
                 ;Set timer 1 config
-                MOV     TMOD,  #00100000b       ;set timer 1 to 8bit auto reload
-                MOV     ACC, PCON               ;Get current pcon config
-                SETB    ACC.7                   ;enable PCON.7 (double the baudrate)    
-                MOV     PCON, ACC               ;set PCON again
+                MOV     TMOD,  #00100001b       ;set timer 1 to 8bit auto reload
+				MOV     SCON,  #50H             ;set serial control settings
+				MOV		TCON,  #00000101B
+                ;MOV     ACC, PCON               ;Get current pcon config
+                ;SETB    ACC.7                   ;enable PCON.7 (double the baudrate)    
+                ;MOV     PCON, ACC               ;set PCON again
                 ;MOV     TH1, #253d             ;set baudrate to 19200 256 - ((Crystal/192)/Baud) = 256 - (11059000/192)/19200 = 256 - 3 - 253
-                MOV		TH1, #250d				;set baudrate to 9600	
+                MOV		TH1, #0FDH				;set baudrate to 9600
+				MOV		TL1, #0FDH				;set baudrate to 9600
+				SETB 	TR1
                 
 
                 MOV     TICKCOUNT_1, #0d            ;reset tick count for all counters
@@ -253,10 +255,11 @@ BUTTON_PRESSED: JB		ALT_BUTTON, ALT_ROUTINE
                 MOV     SEND_DATA_PARAM, @R1		         ; set parameter value to value pointed by R0 value
                 ACALL   DISPLAY_CHECK                        ; check if cursor needs moving
                 ACALL   SEND_DATA                            ; send data to LCD
-				;MOV		A, @R1								 ; get the value sent to the LCD, move to A
-				;MOV		@R0, A								 ; send that value to the location pointed by R0
+				;saving data to local memory:
+				MOV		A, @R1								 ; get the value sent to the LCD, move to A
+				MOV		@R0, A								 ; send that value to the location pointed by R0
 				INC		R0									 ; increment pointer
-                ;ACALL   WAIT_500MS                           ; wait 500ms for the hell of it 
+                ACALL   WAIT_500MS                           ; wait 500ms for the hell of it 
 				JMP		BP_EXIT
 				
 ALT_ROUTINE:	DJNZ	BUTTON_COUNT, REG_KEY				 ;
@@ -270,6 +273,7 @@ ALT_ROUTINE:	DJNZ	BUTTON_COUNT, REG_KEY				 ;
 				MOV		SEND_DATA_PARAM, A					 ; 
 				ACALL 	DISPLAY_CHECK						 
 				ACALL	SEND_DATA							 ; send number
+				MOV		@R0, SEND_DATA_PARAM
 				INC		R0
 				ACALL	WAIT_500MS
 				JMP 	BP_EXIT
@@ -309,7 +313,7 @@ DC_EXIT:        ACALL	WAIT_500MS
 ; ================================================================
 WAIT_500MS:     MOV     SECOND_COUNT, #0d                    ;reset counter
 RCK:            MOV     A, SECOND_COUNT
-                CJNE    A, #1d, RCK                         ;count to 10 for 100ms 
+                CJNE    A, #5d, RCK                         ;count to 10 for 200ms 
                 RET                                          
                 
                 
