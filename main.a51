@@ -194,9 +194,9 @@ INIT_TABLE:		MOV		60H, #31H	;1
 				RET
 
 INIT_TABLE2:    MOV		70H, #1d	
-				MOV		71H, #2d
-				MOV		72H, #3d
-				MOV		73H, #0AH
+				MOV		71H, #2d	
+				MOV		72H, #3d	
+				MOV		73H, #0AH	
 				MOV		74H, #4d
 				MOV		75H, #5d
 				MOV		76H, #6d
