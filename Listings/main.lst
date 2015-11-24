@@ -1,4 +1,4 @@
-A51 MACRO ASSEMBLER  MAIN                                                                 11/23/2015 17:46:18 PAGE     1
+A51 MACRO ASSEMBLER  MAIN                                                                 11/23/2015 18:43:06 PAGE     1
 
 
 MACRO ASSEMBLER A51 V8.02c
@@ -47,37 +47,37 @@ LOC  OBJ            LINE     SOURCE
                       36     
   00B6                37                     GREEN_LED EQU P3.6
                       38     
-  0040                39                     KEYPAD_VALUE EQU 40H            ;value of the key pressed
+  0030                39                     KEYPAD_VALUE EQU 30H            ;value of the key pressed
                       40     
                       41                     ;SUBROUTINE PARAMETERS
                       42                     ;====================================================================
-  0050                43                     SEND_COMMAND_PARAM EQU 50H                                           ;
-  0051                44                     SEND_DATA_PARAM EQU 51H                                              ;
-  0052                45                     SEND_SERIAL_PARAM EQU 52H
+  0031                43                     SEND_COMMAND_PARAM EQU 31H                                           ;
+  0032                44                     SEND_DATA_PARAM EQU 32H                                              ;
+  0033                45                     SEND_SERIAL_PARAM EQU 33H
                       46                     ;====================================================================
                       47                                     
                       48                                     ;Table for values:
                       49                                     ;==========================================================
                              ==========
-  0041                50                                     TABLE_START EQU 41H
+  0034                50                                     TABLE_START EQU 34H
                       51                     
                       52                     ;Flags
   0001                53                     IS_NEXT_LINE EQU 20H.1          ;indicates if the LCD is already on the nex
                              t line   
                       54     
-A51 MACRO ASSEMBLER  MAIN                                                                 11/23/2015 17:46:18 PAGE     2
+A51 MACRO ASSEMBLER  MAIN                                                                 11/23/2015 18:43:06 PAGE     2
 
 0000                  55                     ORG     0000H                   ;RESET INTERRUPT
 0000 803E             56                     JMP     START                   ;go to start on reset
                       57     
 0003                  58                     ORG     0003H                   ;EXT0 INTERRUPT SWITCH BUTTON
-0003 01B6             59                     JMP     EXT0IRS
+0003 01B1             59                     JMP     EXT0IRS
                       60     
 0013                  61                     ORG     0013H                   ;EXT1 INTERRUPT EDIT BUTTON
                       62                     ;JMP     EXT1IRS
                       63     
 002B                  64                     ORG     002BH                   ;T2 INTERRUPT
-002B 806F             65                     JMP     T2IRS                   ;Go to interrupt routine
+002B 806A             65                     JMP     T2IRS                   ;Go to interrupt routine
                       66     
 0040                  67                     ORG     0040H
 0040 C2A6             68     START:          CLR     RW_ENABLE               ;(E) read write enable on 0
@@ -109,7 +109,7 @@ LOC  OBJ            LINE     SOURCE
                       92                     
 006D C201             93                     CLR     IS_NEXT_LINE                 ;set is_next_line to false
                       94                                     
-006F 754160           95                                     MOV             TABLE_START, #60H                       ;se
+006F 753460           95                                     MOV             TABLE_START, #60H                       ;se
                              t value of table start to 60H
                       96                     
                       97     
@@ -122,226 +122,219 @@ LOC  OBJ            LINE     SOURCE
 007A 75CD4C          103                     MOV     T2H, #76                    ;start timer at reload value
 007D 75CC01          104                     MOV     T2L, #01                    ;
                      105     
-0080 755100          106                     MOV     SEND_DATA_PARAM, #00H
-0083 755000          107                     MOV     SEND_COMMAND_PARAM, #00H
+0080 753200          106                     MOV     SEND_DATA_PARAM, #00H
+0083 753100          107                     MOV     SEND_COMMAND_PARAM, #00H
                      108     
 0086 75C804          109                     MOV     T2CON, #00000100b           ;Start T2
                      110                                     
-0089 11DC            111                                     ACALL   INIT_TABLE
+0089 11D7            111                                     ACALL   INIT_TABLE
                      112     
-008B 755001          113                     MOV     SEND_COMMAND_PARAM, #01H    ;clear display command
-008E 310D            114                     ACALL   SEND_COMMAND
+008B 753101          113                     MOV     SEND_COMMAND_PARAM, #01H    ;clear display command
+008E 3108            114                     ACALL   SEND_COMMAND
                      115     
-0090 75500F          116                     MOV     SEND_COMMAND_PARAM, #0FH    ;initialize display
-A51 MACRO ASSEMBLER  MAIN                                                                 11/23/2015 17:46:18 PAGE     3
+0090 75310F          116                     MOV     SEND_COMMAND_PARAM, #0FH    ;initialize display
+A51 MACRO ASSEMBLER  MAIN                                                                 11/23/2015 18:43:06 PAGE     3
 
-0093 310D            117                     ACALL   SEND_COMMAND
-                     118                                     
-0095 7550C0          119                                     MOV             SEND_COMMAND_PARAM, #0C0H       ;test new l
-                             ine select
-0098 310D            120                                     ACALL   SEND_COMMAND
-                     121     
-009A 80FE            122                     JMP     $                           ;wait for interrupts
-                     123     
-                     124     ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;TRIGGERS;;;;;;;;;;;;;;;;;;;;;;;;
+0093 3108            117                     ACALL   SEND_COMMAND
+                     118     
+0095 80FE            119                     JMP     $                           ;wait for interrupts
+                     120     
+                     121     ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;TRIGGERS;;;;;;;;;;;;;;;;;;;;;;;;
                              ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-                     125     ;Triggered every T2 interrupt
-009C C0D0            126     T2IRS:          PUSH    PSW
-009E C0E0            127                     PUSH    ACC
-00A0 B2CF            128                     CPL     T2CON.7              ;reset T2 settings
-00A2 B2CA            129                     CPL     T2CON.2              ;
-00A4 11B1            130                     ACALL   TICK                 ;go to tick routine
-                     131     
-00A6 D0E0            132     EXIT_T2IRS:     POP     ACC                  ;return ACC
-00A8 D0D0            133                     POP     PSW                  ;return PSW
-00AA 75A8A5          134                     MOV     IE, #INTERRUPTS      ;enable interruptions again
-00AD 75C804          135                     MOV     T2CON, #00000100b    ;Start T2
-00B0 32              136                     RETI
-                     137     ;Tick subroutine, called every 50 ms
-00B1 053A            138     TICK:           INC TICKCOUNT_1
-00B3 053C            139                     INC SECOND_COUNT
-00B5 22              140                     RET
-                     141     
-                     142     ;Triggered every ext0 interrupt
-00B6 C0D0            143     EXT0IRS:        PUSH    PSW
-00B8 C0E0            144                     PUSH    ACC
-00BA C2A8            145                     CLR     EX0                  ;Disable external0 interrupt
-00BC C2AA            146                     CLR     EX1                  ;Disable external1 interrupt
-00BE 3139            147                     ACALL   BUTTON_PRESSED       ;call button pressed routine
-00C0 D0E0            148     EXIT_EXT0IRS:   POP     ACC
-00C2 D0D0            149                     POP     PSW
-00C4 D2A8            150                     SETB    EX0                  ; reenable ext0 interrupt
-00C6 D2AA            151                     SETB    EX1                  ; reenable ext1 interrupt
-00C8 32              152                     RETI
-                     153     
-                     154     ;Triggered every ext1 interrupt
-00C9 C0D0            155     EXT1IRS:        PUSH    PSW                ; save status before entering interrupt
-00CB C0E0            156                     PUSH    ACC
-00CD C2A8            157                     CLR     EX0
-00CF C2AA            158                     CLR     EX1
-00D1 318D            159                     ACALL   SEND_PRESSED
-00D3 D0E0            160     EXIT_EXT1IRS:   POP     ACC                ; load status after interrupt
-00D5 D0D0            161                     POP     PSW
-00D7 D2A8            162                     SETB    EX0                ; reenable ext0 interrupt
-00D9 D2AA            163                     SETB    EX1                ; reenable ext1 interrupt
-00DB 32              164                     RETI
-                     165     
-                     166     ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;ROUTINES;;;;;;;;;;;;;;;;;;;;;;;;
+                     122     ;Triggered every T2 interrupt
+0097 C0D0            123     T2IRS:          PUSH    PSW
+0099 C0E0            124                     PUSH    ACC
+009B B2CF            125                     CPL     T2CON.7              ;reset T2 settings
+009D B2CA            126                     CPL     T2CON.2              ;
+009F 11AC            127                     ACALL   TICK                 ;go to tick routine
+                     128     
+00A1 D0E0            129     EXIT_T2IRS:     POP     ACC                  ;return ACC
+00A3 D0D0            130                     POP     PSW                  ;return PSW
+00A5 75A8A5          131                     MOV     IE, #INTERRUPTS      ;enable interruptions again
+00A8 75C804          132                     MOV     T2CON, #00000100b    ;Start T2
+00AB 32              133                     RETI
+                     134     ;Tick subroutine, called every 50 ms
+00AC 053A            135     TICK:           INC TICKCOUNT_1
+00AE 053C            136                     INC SECOND_COUNT
+00B0 22              137                     RET
+                     138     
+                     139     ;Triggered every ext0 interrupt
+00B1 C0D0            140     EXT0IRS:        PUSH    PSW
+00B3 C0E0            141                     PUSH    ACC
+00B5 C2A8            142                     CLR     EX0                  ;Disable external0 interrupt
+00B7 C2AA            143                     CLR     EX1                  ;Disable external1 interrupt
+00B9 3134            144                     ACALL   BUTTON_PRESSED       ;call button pressed routine
+00BB D0E0            145     EXIT_EXT0IRS:   POP     ACC
+00BD D0D0            146                     POP     PSW
+00BF D2A8            147                     SETB    EX0                  ; reenable ext0 interrupt
+00C1 D2AA            148                     SETB    EX1                  ; reenable ext1 interrupt
+00C3 32              149                     RETI
+                     150     
+                     151     ;Triggered every ext1 interrupt
+00C4 C0D0            152     EXT1IRS:        PUSH    PSW                ; save status before entering interrupt
+00C6 C0E0            153                     PUSH    ACC
+00C8 C2A8            154                     CLR     EX0
+00CA C2AA            155                     CLR     EX1
+00CC 3188            156                     ACALL   SEND_PRESSED
+00CE D0E0            157     EXIT_EXT1IRS:   POP     ACC                ; load status after interrupt
+00D0 D0D0            158                     POP     PSW
+00D2 D2A8            159                     SETB    EX0                ; reenable ext0 interrupt
+00D4 D2AA            160                     SETB    EX1                ; reenable ext1 interrupt
+00D6 32              161                     RETI
+                     162     
+                     163     ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;ROUTINES;;;;;;;;;;;;;;;;;;;;;;;;
                              ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-00DC 756031          167     INIT_TABLE:             MOV             60H, #31H       ;1
-00DF 756132          168                                     MOV             61H, #32H       ;2
-00E2 756233          169                                     MOV             62H, #33H       ;3
-00E5 756341          170                                     MOV             63H, #41H       ;A      
-00E8 756434          171                                     MOV             64H, #34H       ;4
-00EB 756535          172                                     MOV             65H, #35H       ;5
-00EE 756636          173                                     MOV             66H, #36H       ;6
-00F1 756742          174                                     MOV             67H, #42H       ;B
-00F4 756837          175                                     MOV             68H, #37H       ;7
-00F7 756938          176                                     MOV             69H, #38H       ;8
-00FA 756A39          177                                     MOV             6AH, #39H       ;9
-00FD 756B43          178                                     MOV             6BH, #43H       ;C
-0100 756C2A          179                                     MOV             6CH, #2AH       ;*
-A51 MACRO ASSEMBLER  MAIN                                                                 11/23/2015 17:46:18 PAGE     4
+00D7 756031          164     INIT_TABLE:             MOV             60H, #31H       ;1
+00DA 756132          165                                     MOV             61H, #32H       ;2
+00DD 756233          166                                     MOV             62H, #33H       ;3
+00E0 756341          167                                     MOV             63H, #41H       ;A      
+00E3 756434          168                                     MOV             64H, #34H       ;4
+00E6 756535          169                                     MOV             65H, #35H       ;5
+00E9 756636          170                                     MOV             66H, #36H       ;6
+00EC 756742          171                                     MOV             67H, #42H       ;B
+00EF 756837          172                                     MOV             68H, #37H       ;7
+00F2 756938          173                                     MOV             69H, #38H       ;8
+00F5 756A39          174                                     MOV             6AH, #39H       ;9
+00F8 756B43          175                                     MOV             6BH, #43H       ;C
+00FB 756C2A          176                                     MOV             6CH, #2AH       ;*
+00FE 756D30          177                                     MOV             6DH, #30H       ;0
+0101 756E23          178                                     MOV             6EH, #23H       ;#
+0104 756F44          179                                     MOV             6FH, #44H       ;D
+0107 22              180                                     RET
+A51 MACRO ASSEMBLER  MAIN                                                                 11/23/2015 18:43:06 PAGE     4
 
-0103 756D30          180                                     MOV             6DH, #30H       ;0
-0106 756E23          181                                     MOV             6EH, #23H       ;#
-0109 756F44          182                                     MOV             6FH, #44H       ;D
-010C 22              183                                     RET
-                     184     
-                     185     
-                     186     ;SEND_COMMAND
-                     187     ;TAKES: SEND_COMMAND_PARAM
-                     188     ;RUN Display routine for the LCD display
-                     189     ;================================================================
-010D C2B6            190     SEND_COMMAND:   CLR     GREEN_LED                         ; turn on led
-010F 855090          191                     MOV     LCD_DATA, SEND_COMMAND_PARAM      ; write init command to data bus
-0112 C2A7            192                     CLR     REGISTER_SELECT                   ; make sure RS is 0
-0114 753A00          193                     MOV     TICKCOUNT_1, #0d
-0117 D2A6            194                     SETB    RW_ENABLE                         ; activate write
-0119 E53A            195     MOV_AG1:        MOV     A, TICKCOUNT_1
-011B B401FB          196                     CJNE    A, #1d, MOV_AG1                   ; wait 50ms
-011E C2A6            197                     CLR     RW_ENABLE                         ; deactivate write
-0120 D2B6            198                     SETB    GREEN_LED
-0122 22              199                     RET
-                     200     
-                     201     ;SEND_DATA
-                     202     ;TAKES: SEND_DATA_PARAM
-                     203     ;RUN Display routine for the LCD display
-                     204     ;================================================================
-0123 C2B6            205     SEND_DATA:      CLR     GREEN_LED                         ; turn on led
-0125 855190          206                     MOV     LCD_DATA, SEND_DATA_PARAM         ; write init command to data bus
-0128 D2A7            207                     SETB    REGISTER_SELECT                   ; make sure RS is 1
-012A 753A00          208                     MOV     TICKCOUNT_1, #0d
-012D D2A6            209                     SETB    RW_ENABLE                         ; activate write
-012F E53A            210     MOV_AG2:        MOV     A, TICKCOUNT_1
-0131 B401FB          211                     CJNE    A, #1d, MOV_AG2                   ; wait 50ms
-0134 C2A6            212                     CLR     RW_ENABLE                         ; deactivate write
-0136 D2B6            213                     SETB    GREEN_LED
-0138 22              214                     RET
-                     215     
-                     216     ; BUTTON PRESSED ROUTINE
-                     217     ; SENDS THE DIRECT VALUE OF THE KEY PRESSED TO THE DISPLAY
-                     218     ; ===============================================================
-0139 E5A0            219     BUTTON_PRESSED: MOV     A, P2                                        ; save value of keypre
+                     181     
+                     182     
+                     183     ;SEND_COMMAND
+                     184     ;TAKES: SEND_COMMAND_PARAM
+                     185     ;RUN Display routine for the LCD display
+                     186     ;================================================================
+0108 C2B6            187     SEND_COMMAND:   CLR     GREEN_LED                         ; turn on led
+010A 853190          188                     MOV     LCD_DATA, SEND_COMMAND_PARAM      ; write init command to data bus
+010D C2A7            189                     CLR     REGISTER_SELECT                   ; make sure RS is 0
+010F 753A00          190                     MOV     TICKCOUNT_1, #0d
+0112 D2A6            191                     SETB    RW_ENABLE                         ; activate write
+0114 E53A            192     MOV_AG1:        MOV     A, TICKCOUNT_1
+0116 B401FB          193                     CJNE    A, #1d, MOV_AG1                   ; wait 50ms
+0119 C2A6            194                     CLR     RW_ENABLE                         ; deactivate write
+011B D2B6            195                     SETB    GREEN_LED
+011D 22              196                     RET
+                     197     
+                     198     ;SEND_DATA
+                     199     ;TAKES: SEND_DATA_PARAM
+                     200     ;RUN Display routine for the LCD display
+                     201     ;================================================================
+011E C2B6            202     SEND_DATA:      CLR     GREEN_LED                         ; turn on led
+0120 853290          203                     MOV     LCD_DATA, SEND_DATA_PARAM         ; write init command to data bus
+0123 D2A7            204                     SETB    REGISTER_SELECT                   ; make sure RS is 1
+0125 753A00          205                     MOV     TICKCOUNT_1, #0d
+0128 D2A6            206                     SETB    RW_ENABLE                         ; activate write
+012A E53A            207     MOV_AG2:        MOV     A, TICKCOUNT_1
+012C B401FB          208                     CJNE    A, #1d, MOV_AG2                   ; wait 50ms
+012F C2A6            209                     CLR     RW_ENABLE                         ; deactivate write
+0131 D2B6            210                     SETB    GREEN_LED
+0133 22              211                     RET
+                     212     
+                     213     ; BUTTON PRESSED ROUTINE
+                     214     ; SENDS THE DIRECT VALUE OF THE KEY PRESSED TO THE DISPLAY
+                     215     ; ===============================================================
+0134 E5A0            216     BUTTON_PRESSED: MOV     A, P2                                        ; save value of keypre
                              ssed into A
-013B 540F            220                                     ANL             A, #0Fh                                    
+0136 540F            217                                     ANL             A, #0Fh                                    
                                                    ; do bitwise and with 0F to get only important 4 bits
-013D F540            221                                     MOV             KEYPAD_VALUE, A                            
+0138 F530            218                                     MOV             KEYPAD_VALUE, A                            
                                        ; move value of A into keypad_value
-013F E541            222                                     MOV             A, TABLE_START                             
+013A E534            219                                     MOV             A, TABLE_START                             
                                        ; move value of table start to A (50H at moment of writing)
-0141 2540            223                                     ADD             A, KEYPAD_VALUE                            
+013C 2530            220                                     ADD             A, KEYPAD_VALUE                            
                                        ; add registered keypad value to A
-0143 F9              224                                     MOV             R1, A                                      
+013E F9              221                                     MOV             R1, A                                      
                                                ; move value to R0 so we can use as pointer and get table value
-0144 8751            225                     MOV     SEND_DATA_PARAM, @R1                     ; set parameter value to v
+013F 8732            222                     MOV     SEND_DATA_PARAM, @R1                     ; set parameter value to v
                              alue pointed by R0 value
-0146 314D            226                     ACALL   DISPLAY_CHECK                        ; check if cursor needs moving
-0148 3123            227                     ACALL   SEND_DATA                            ; send data to LCD
-014A 3184            228                     ACALL   WAIT_500MS                           ; wait 500ms for the hell of i
+0141 3148            223                     ACALL   DISPLAY_CHECK                        ; check if cursor needs moving
+0143 311E            224                     ACALL   SEND_DATA                            ; send data to LCD
+0145 317F            225                     ACALL   WAIT_500MS                           ; wait 500ms for the hell of i
                              t 
-014C 22              229     BP_EXIT:        RET
-                     230     
-                     231     ; DISPLAY CHECK ROUTINE
-                     232     ; Check the display, if a new line is needed, moves the cursor to new line,
-                     233     ; if both lines are full, clear screen.
-                     234     ; uses CHARACTER_COUNT
-014D 053D            235     DISPLAY_CHECK:  INC     CHARACTER_COUNT                     ;new character added to screen
-014F E53D            236                     MOV     A, CHARACTER_COUNT                  ;move for comparison
-0151 B41016          237                     CJNE    A, #16d, DC_EXIT                    ;if the cursor doesnt need movi
-A51 MACRO ASSEMBLER  MAIN                                                                 11/23/2015 17:46:18 PAGE     5
-
+0147 22              226     BP_EXIT:        RET
+                     227     
+                     228     ; DISPLAY CHECK ROUTINE
+                     229     ; Check the display, if a new line is needed, moves the cursor to new line,
+                     230     ; if both lines are full, clear screen.
+                     231     ; uses CHARACTER_COUNT
+0148 053D            232     DISPLAY_CHECK:  INC     CHARACTER_COUNT                     ;new character added to screen
+014A E53D            233                     MOV     A, CHARACTER_COUNT                  ;move for comparison
+014C B41016          234                     CJNE    A, #16d, DC_EXIT                    ;if the cursor doesnt need movi
                              ng, continue as usual
-0154 753D00          238                     MOV     CHARACTER_COUNT, #0d                ;reset character line count
-0157 10010B          239                     JBC     IS_NEXT_LINE, CLR_DISP              ;if its already on the next lin
+014F 753D00          235                     MOV     CHARACTER_COUNT, #0d                ;reset character line count
+0152 10010B          236                     JBC     IS_NEXT_LINE, CLR_DISP              ;if its already on the next lin
                              e, clear display
-015A D201            240                     SETB    IS_NEXT_LINE                        ;set isnextline to true
-015C 7550C0          241                     MOV     SEND_COMMAND_PARAM, #11000000b      ;send command for moving cursor
-                              to next line
-015F 310D            242                     ACALL   SEND_COMMAND
-0161 3184            243                                     ACALL   WAIT_500MS
-0163 8005            244                     JMP     DC_EXIT
-                     245                     
-0165 755001          246     CLR_DISP:       MOV     SEND_COMMAND_PARAM, #01H            ;send command for clearing scre
-                             en and returning cursor    
-0168 310D            247                     ACALL   SEND_COMMAND             
-016A 22              248     DC_EXIT:        RET
-                     249     
-                     250     ; ALT INPUT ROUTINE
-                     251     ; SENDS HEXADECIMAL VALUE TO THE DISPLAY
-                     252     ; ===============================================================
-016B D53B12          253     ALT_INPUT:      DJNZ    BUTTON_COUNT, REG_BUTTON             ; if the count is not zero, sa
-                             ve the button value
-016E E540            254                     MOV     A, KEYPAD_VALUE                      ; if it is zero, send the valu
-                             e to screen
-0170 C4              255                     SWAP    A
-0171 F540            256                     MOV     KEYPAD_VALUE, A                      ; move keypad value to Acc for
-                              nibble swap
-0173 7540A0          257                     MOV     KEYPAD_VALUE, #LOW(P2)               ; load value of keypad into ne
-                             xt 4 bits
-0176 753B02          258                     MOV     BUTTON_COUNT, #2d                    ; reset button count
-0179 854051          259                     MOV     SEND_DATA_PARAM, KEYPAD_VALUE        ; set parameter value
-017C 3123            260                     ACALL   SEND_DATA                            ; send data to LCD
-017E 8003            261                     JMP     AI_EXIT                              ; exit
-0180 7540A0          262     REG_BUTTON:     MOV     KEYPAD_VALUE, #LOW(P2)               ; save
-0183 22              263     AI_EXIT:        RET
-                     264     
-                     265     ; WAIT 500 MS ROUTINE
-                     266     ; WAITS 500 MS, ALL OTHER ROUTINES STOPPED, EXCEPT TIMER
-                     267     ; ================================================================
-0184 753C00          268     WAIT_500MS:     MOV     SECOND_COUNT, #0d                    ;reset counter
-0187 E53C            269     RCK:            MOV     A, SECOND_COUNT
-0189 B414FB          270                     CJNE    A, #20d, RCK                         ;count to 20 for 1s 
-018C 22              271                     RET                                          ;return
-                     272                     
-                     273                     
-                     274     ;SEND PRESSED ROUTINE || Send Push button has been pressed, interrupt enabled.
-                     275     ;sends all data from LCD display to serial, suing send_serial routine
-                     276     ;=================================================================
-018D 753A00          277     SEND_PRESSED:   MOV     TICKCOUNT_1, #0d
-0190 E53A            278     SPRCK:          MOV     A, TICKCOUNT_1
-0192 B502FB          279                     CJNE    A, 2d, SPRCK                ;debounce button
-                     280                     ;read first byte from LCD to SEND_SERIAL_PARAM
-                     281                     ;call SEND_SERIAL
-                     282                     ;repeat until done
-0195 22              283                     RET
-                     284                     
-                     285                     
-                     286     ; SEND SERIAL DATA SUBROUTINE
-                     287     ; SENDS BYTE STORED IN SEND_SERIAL_PARAM
-                     288     ; ================================================================
-0196 D299            289     SEND_SERIAL:    SETB    TI                                  ;set flag on
-0198 855299          290                     MOV     SBUF, SEND_SERIAL_PARAM             ;move value to serial buffer
-019B C299            291                     CLR     TI
-019D 3099FD          292                     JNB     TI, $                               ;jump if byte is not done sendi
-                             ng
-01A0 22              293                     RET
-                     294     
-A51 MACRO ASSEMBLER  MAIN                                                                 11/23/2015 17:46:18 PAGE     6
+A51 MACRO ASSEMBLER  MAIN                                                                 11/23/2015 18:43:06 PAGE     5
 
-                     295     
-                     296     END
-A51 MACRO ASSEMBLER  MAIN                                                                 11/23/2015 17:46:18 PAGE     7
+0155 D201            237                     SETB    IS_NEXT_LINE                        ;set isnextline to true
+0157 753140          238                     MOV     SEND_COMMAND_PARAM, #40H            ;send command for moving cursor
+                              to next line
+015A 3108            239                     ACALL   SEND_COMMAND
+015C 317F            240                                     ACALL   WAIT_500MS
+015E 8005            241                     JMP     DC_EXIT
+0160 753101          242     CLR_DISP:       MOV     SEND_COMMAND_PARAM, #01H            ;send command for clearing scre
+                             en and returning cursor    
+0163 3108            243                     ACALL   SEND_COMMAND             
+0165 22              244     DC_EXIT:        RET
+                     245     
+                     246     ; ALT INPUT ROUTINE
+                     247     ; SENDS HEXADECIMAL VALUE TO THE DISPLAY
+                     248     ; ===============================================================
+0166 D53B12          249     ALT_INPUT:      DJNZ    BUTTON_COUNT, REG_BUTTON             ; if the count is not zero, sa
+                             ve the button value
+0169 E530            250                     MOV     A, KEYPAD_VALUE                      ; if it is zero, send the valu
+                             e to screen
+016B C4              251                     SWAP    A
+016C F530            252                     MOV     KEYPAD_VALUE, A                      ; move keypad value to Acc for
+                              nibble swap
+016E 7530A0          253                     MOV     KEYPAD_VALUE, #LOW(P2)               ; load value of keypad into ne
+                             xt 4 bits
+0171 753B02          254                     MOV     BUTTON_COUNT, #2d                    ; reset button count
+0174 853032          255                     MOV     SEND_DATA_PARAM, KEYPAD_VALUE        ; set parameter value
+0177 311E            256                     ACALL   SEND_DATA                            ; send data to LCD
+0179 8003            257                     JMP     AI_EXIT                              ; exit
+017B 7530A0          258     REG_BUTTON:     MOV     KEYPAD_VALUE, #LOW(P2)               ; save
+017E 22              259     AI_EXIT:        RET
+                     260     
+                     261     ; WAIT 500 MS ROUTINE
+                     262     ; WAITS 500 MS, ALL OTHER ROUTINES STOPPED, EXCEPT TIMER
+                     263     ; ================================================================
+017F 753C00          264     WAIT_500MS:     MOV     SECOND_COUNT, #0d                    ;reset counter
+0182 E53C            265     RCK:            MOV     A, SECOND_COUNT
+0184 B414FB          266                     CJNE    A, #20d, RCK                         ;count to 20 for 1s 
+0187 22              267                     RET                                          ;return
+                     268                     
+                     269                     
+                     270     ;SEND PRESSED ROUTINE || Send Push button has been pressed, interrupt enabled.
+                     271     ;sends all data from LCD display to serial, suing send_serial routine
+                     272     ;=================================================================
+0188 753A00          273     SEND_PRESSED:   MOV     TICKCOUNT_1, #0d
+018B E53A            274     SPRCK:          MOV     A, TICKCOUNT_1
+018D B502FB          275                     CJNE    A, 2d, SPRCK                ;debounce button
+                     276                     ;read first byte from LCD to SEND_SERIAL_PARAM
+                     277                     ;call SEND_SERIAL
+                     278                     ;repeat until done
+0190 22              279                     RET
+                     280                     
+                     281                     
+                     282     ; SEND SERIAL DATA SUBROUTINE
+                     283     ; SENDS BYTE STORED IN SEND_SERIAL_PARAM
+                     284     ; ================================================================
+0191 D299            285     SEND_SERIAL:    SETB    TI                                  ;set flag on
+0193 853399          286                     MOV     SBUF, SEND_SERIAL_PARAM             ;move value to serial buffer
+0196 C299            287                     CLR     TI
+0198 3099FD          288                     JNB     TI, $                               ;jump if byte is not done sendi
+                             ng
+019B 22              289                     RET
+                     290     
+                     291     
+                     292     END
+A51 MACRO ASSEMBLER  MAIN                                                                 11/23/2015 18:43:06 PAGE     6
 
 SYMBOL TABLE LISTING
 ------ ----- -------
@@ -350,33 +343,33 @@ SYMBOL TABLE LISTING
 N A M E             T Y P E  V A L U E   ATTRIBUTES
 
 ACC. . . . . . . .  D ADDR   00E0H   A   
-AI_EXIT. . . . . .  C ADDR   0183H   A   
-ALT_INPUT. . . . .  C ADDR   016BH   A   
-BP_EXIT. . . . . .  C ADDR   014CH   A   
+AI_EXIT. . . . . .  C ADDR   017EH   A   
+ALT_INPUT. . . . .  C ADDR   0166H   A   
+BP_EXIT. . . . . .  C ADDR   0147H   A   
 BUTTON_COUNT . . .  N NUMB   003BH   A   
-BUTTON_PRESSED . .  C ADDR   0139H   A   
+BUTTON_PRESSED . .  C ADDR   0134H   A   
 CHARACTER_COUNT. .  N NUMB   003DH   A   
-CLR_DISP . . . . .  C ADDR   0165H   A   
-DC_EXIT. . . . . .  C ADDR   016AH   A   
+CLR_DISP . . . . .  C ADDR   0160H   A   
+DC_EXIT. . . . . .  C ADDR   0165H   A   
 DEBOUNCER_COUNT. .  N NUMB   003EH   A   
-DISPLAY_CHECK. . .  C ADDR   014DH   A   
+DISPLAY_CHECK. . .  C ADDR   0148H   A   
 EX0. . . . . . . .  B ADDR   00A8H.0 A   
 EX1. . . . . . . .  B ADDR   00A8H.2 A   
-EXIT_EXT0IRS . . .  C ADDR   00C0H   A   
-EXIT_EXT1IRS . . .  C ADDR   00D3H   A   
-EXIT_T2IRS . . . .  C ADDR   00A6H   A   
-EXT0IRS. . . . . .  C ADDR   00B6H   A   
-EXT1IRS. . . . . .  C ADDR   00C9H   A   
+EXIT_EXT0IRS . . .  C ADDR   00BBH   A   
+EXIT_EXT1IRS . . .  C ADDR   00CEH   A   
+EXIT_T2IRS . . . .  C ADDR   00A1H   A   
+EXT0IRS. . . . . .  C ADDR   00B1H   A   
+EXT1IRS. . . . . .  C ADDR   00C4H   A   
 GREEN_LED. . . . .  B ADDR   00B0H.6 A   
 IE . . . . . . . .  D ADDR   00A8H   A   
-INIT_TABLE . . . .  C ADDR   00DCH   A   
+INIT_TABLE . . . .  C ADDR   00D7H   A   
 INTERRUPTS . . . .  N NUMB   00A5H   A   
 IP . . . . . . . .  D ADDR   00B8H   A   
 IS_NEXT_LINE . . .  B ADDR   0020H.1 A   
-KEYPAD_VALUE . . .  N NUMB   0040H   A   
+KEYPAD_VALUE . . .  N NUMB   0030H   A   
 LCD_DATA . . . . .  D ADDR   0090H   A   
-MOV_AG1. . . . . .  C ADDR   0119H   A   
-MOV_AG2. . . . . .  C ADDR   012FH   A   
+MOV_AG1. . . . . .  C ADDR   0114H   A   
+MOV_AG2. . . . . .  C ADDR   012AH   A   
 P1 . . . . . . . .  D ADDR   0090H   A   
 P2 . . . . . . . .  D ADDR   00A0H   A   
 P3 . . . . . . . .  D ADDR   00B0H   A   
@@ -384,35 +377,35 @@ PCON . . . . . . .  D ADDR   0087H   A
 PSW. . . . . . . .  D ADDR   00D0H   A   
 RCAP2H . . . . . .  N NUMB   00CBH   A   
 RCAP2L . . . . . .  N NUMB   00CAH   A   
-RCK. . . . . . . .  C ADDR   0187H   A   
+RCK. . . . . . . .  C ADDR   0182H   A   
 REGISTER_SELECT. .  B ADDR   00A0H.7 A   
-REG_BUTTON . . . .  C ADDR   0180H   A   
+REG_BUTTON . . . .  C ADDR   017BH   A   
 RW_ENABLE. . . . .  B ADDR   00A0H.6 A   
 SBUF . . . . . . .  D ADDR   0099H   A   
 SCON . . . . . . .  D ADDR   0098H   A   
 SECOND_COUNT . . .  N NUMB   003CH   A   
-SEND_COMMAND . . .  C ADDR   010DH   A   
-SEND_COMMAND_PARAM  N NUMB   0050H   A   
-SEND_DATA. . . . .  C ADDR   0123H   A   
-SEND_DATA_PARAM. .  N NUMB   0051H   A   
-SEND_PRESSED . . .  C ADDR   018DH   A   
-SEND_SERIAL. . . .  C ADDR   0196H   A   
-SEND_SERIAL_PARAM.  N NUMB   0052H   A   
-SPRCK. . . . . . .  C ADDR   0190H   A   
+SEND_COMMAND . . .  C ADDR   0108H   A   
+SEND_COMMAND_PARAM  N NUMB   0031H   A   
+SEND_DATA. . . . .  C ADDR   011EH   A   
+SEND_DATA_PARAM. .  N NUMB   0032H   A   
+SEND_PRESSED . . .  C ADDR   0188H   A   
+SEND_SERIAL. . . .  C ADDR   0191H   A   
+SEND_SERIAL_PARAM.  N NUMB   0033H   A   
+SPRCK. . . . . . .  C ADDR   018BH   A   
 START. . . . . . .  C ADDR   0040H   A   
 T2CON. . . . . . .  N NUMB   00C8H   A   
 T2H. . . . . . . .  N NUMB   00CDH   A   
-T2IRS. . . . . . .  C ADDR   009CH   A   
+T2IRS. . . . . . .  C ADDR   0097H   A   
 T2L. . . . . . . .  N NUMB   00CCH   A   
-TABLE_START. . . .  N NUMB   0041H   A   
+TABLE_START. . . .  N NUMB   0034H   A   
 TH1. . . . . . . .  D ADDR   008DH   A   
 TI . . . . . . . .  B ADDR   0098H.1 A   
-TICK . . . . . . .  C ADDR   00B1H   A   
+TICK . . . . . . .  C ADDR   00ACH   A   
 TICKCOUNT_1. . . .  N NUMB   003AH   A   
-A51 MACRO ASSEMBLER  MAIN                                                                 11/23/2015 17:46:18 PAGE     8
+A51 MACRO ASSEMBLER  MAIN                                                                 11/23/2015 18:43:06 PAGE     7
 
 TMOD . . . . . . .  D ADDR   0089H   A   
-WAIT_500MS . . . .  C ADDR   0184H   A   
+WAIT_500MS . . . .  C ADDR   017FH   A   
 
 
 REGISTER BANK(S) USED: 0 

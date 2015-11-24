@@ -36,18 +36,18 @@
 
                 GREEN_LED EQU P3.6
 
-                KEYPAD_VALUE EQU 40H            ;value of the key pressed
+                KEYPAD_VALUE EQU 30H            ;value of the key pressed
 
                 ;SUBROUTINE PARAMETERS
                 ;====================================================================
-                SEND_COMMAND_PARAM EQU 50H                                           ;
-                SEND_DATA_PARAM EQU 51H                                              ;
-                SEND_SERIAL_PARAM EQU 52H
+                SEND_COMMAND_PARAM EQU 31H                                           ;
+                SEND_DATA_PARAM EQU 32H                                              ;
+                SEND_SERIAL_PARAM EQU 33H
                 ;====================================================================
 				
 				;Table for values:
 				;====================================================================
-				TABLE_START EQU 41H
+				TABLE_START EQU 34H
                 
                 ;Flags
                 IS_NEXT_LINE EQU 20H.1          ;indicates if the LCD is already on the next line   
@@ -109,15 +109,14 @@ START:          CLR     RW_ENABLE               ;(E) read write enable on 0
                 MOV     T2CON, #00000100b           ;Start T2
 				
 				ACALL 	INIT_TABLE
+				
+				MOV		R0, #40H					;move 40H to R0 to use as pointer
 
                 MOV     SEND_COMMAND_PARAM, #01H    ;clear display command
                 ACALL   SEND_COMMAND
 
                 MOV     SEND_COMMAND_PARAM, #0FH    ;initialize display
                 ACALL   SEND_COMMAND
-				
-				MOV		SEND_COMMAND_PARAM, #0C0H 	;test new line select
-				ACALL	SEND_COMMAND
 
                 JMP     $                           ;wait for interrupts
 
@@ -225,6 +224,9 @@ BUTTON_PRESSED: MOV     A, P2  			                     ; save value of keypresse
                 MOV     SEND_DATA_PARAM, @R1		         ; set parameter value to value pointed by R0 value
                 ACALL   DISPLAY_CHECK                        ; check if cursor needs moving
                 ACALL   SEND_DATA                            ; send data to LCD
+				MOV		A, @R1								 ; get the value sent to the LCD, move to A
+				MOV		@R0, A								 ; send that value to the location pointed by R0
+				INC		R0									 ; increment pointer
                 ACALL   WAIT_500MS                           ; wait 500ms for the hell of it 
 BP_EXIT:        RET
 
@@ -238,13 +240,13 @@ DISPLAY_CHECK:  INC     CHARACTER_COUNT                     ;new character added
                 MOV     CHARACTER_COUNT, #0d                ;reset character line count
                 JBC     IS_NEXT_LINE, CLR_DISP              ;if its already on the next line, clear display
                 SETB    IS_NEXT_LINE                        ;set isnextline to true
-                MOV     SEND_COMMAND_PARAM, #11000000b      ;send command for moving cursor to next line
+                MOV     SEND_COMMAND_PARAM, #40H            ;send command for moving cursor to next line
                 ACALL   SEND_COMMAND
 				ACALL	WAIT_500MS
                 JMP     DC_EXIT
-                
 CLR_DISP:       MOV     SEND_COMMAND_PARAM, #01H            ;send command for clearing screen and returning cursor    
-                ACALL   SEND_COMMAND             
+                ACALL   SEND_COMMAND
+				MOV		R0, #40H							;reset R0 pointer
 DC_EXIT:        RET
 
 ; ALT INPUT ROUTINE
@@ -277,9 +279,9 @@ RCK:            MOV     A, SECOND_COUNT
 SEND_PRESSED:   MOV     TICKCOUNT_1, #0d
 SPRCK:          MOV     A, TICKCOUNT_1
                 CJNE    A, 2d, SPRCK                ;debounce button
-                ;read first byte from LCD to SEND_SERIAL_PARAM
-                ;call SEND_SERIAL
-                ;repeat until done
+                
+				
+				
                 RET
                 
                 
