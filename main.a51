@@ -43,7 +43,7 @@
                 ;====================================================================
                 SEND_COMMAND_PARAM EQU 31H                                           ;
                 SEND_DATA_PARAM EQU 32H                                              ;
-                SEND_SERIAL_PARAM EQU 33H
+                SEND_SERIAL_PARAM EQU 33H											 ;
                 ;====================================================================
 				
 				;Table for values:
@@ -113,6 +113,12 @@ START:          CLR     RW_ENABLE               ;(E) read write enable on 0
 				
 				MOV		R0, #40H					;move 40H to R0 to use as pointer
 
+				MOV		SEND_COMMAND_PARAM, #38H	;initialize as 8bit 2 line mode
+				ACALL	SEND_COMMAND
+				
+				MOV		SEND_COMMAND_PARAM, #38H	;initialize as 8bit 2 line mode
+				ACALL	SEND_COMMAND
+				
                 MOV     SEND_COMMAND_PARAM, #01H    ;clear display command
                 ACALL   SEND_COMMAND
 
@@ -241,7 +247,7 @@ DISPLAY_CHECK:  INC     CHARACTER_COUNT                     ;new character added
                 MOV     CHARACTER_COUNT, #0d                ;reset character line count
                 JBC     IS_NEXT_LINE, CLR_DISP              ;if its already on the next line, clear display
                 SETB    IS_NEXT_LINE                        ;set isnextline to true
-                MOV     SEND_COMMAND_PARAM, #40H            ;send command for moving cursor to next line
+                MOV     SEND_COMMAND_PARAM, #0C0H            ;send command for moving cursor to next line
                 ACALL   SEND_COMMAND
 				ACALL	WAIT_500MS
                 JMP     DC_EXIT
