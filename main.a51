@@ -36,6 +36,8 @@
                 LCD_DATA EQU P1                 ;LCD data bus
 
                 GREEN_LED EQU P3.6
+					
+				ALT_BUTTON EQU P2.5				
 
                 KEYPAD_VALUE EQU 30H            ;value of the key pressed
 
@@ -81,8 +83,8 @@ START:          CLR     RW_ENABLE               ;(E) read write enable on 0
                 MOV     ACC, PCON               ;Get current pcon config
                 SETB    ACC.7                   ;enable PCON.7 (double the baudrate)    
                 MOV     PCON, ACC               ;set PCON again
-                MOV     TH1, 253d               ;set baudrate to 19200 256 - ((Crystal/192)/Baud) = 256 - (11059000/192)/19200 = 256 - 3 - 253
-                
+                ;MOV     TH1, #253d             ;set baudrate to 19200 256 - ((Crystal/192)/Baud) = 256 - (11059000/192)/19200 = 256 - 3 - 253
+                MOV		TH1, #250d				;set baudrate to 9600	
                 
 
                 MOV     TICKCOUNT_1, #0d            ;reset tick count for all counters
@@ -222,7 +224,8 @@ MOV_AG2:        MOV     A, TICKCOUNT_1
 ; BUTTON PRESSED ROUTINE
 ; SENDS THE DIRECT VALUE OF THE KEY PRESSED TO THE DISPLAY
 ; ===============================================================
-BUTTON_PRESSED: MOV     A, P2  			                     ; save value of keypressed into A
+BUTTON_PRESSED: JB		ALT_BUTTON, 
+				MOV     A, P2  			                     ; save value of keypressed into A
 				ANL		A, #0Fh								 ; do bitwise and with 0F to get only important 4 bits
 				MOV		KEYPAD_VALUE, A					     ; move value of A into keypad_value
 				MOV		A, TABLE_START					     ; move value of table start to A (50H at moment of writing)
@@ -249,12 +252,12 @@ DISPLAY_CHECK:  INC     CHARACTER_COUNT                     ;new character added
                 SETB    IS_NEXT_LINE                        ;set isnextline to true
                 MOV     SEND_COMMAND_PARAM, #0C0H            ;send command for moving cursor to next line
                 ACALL   SEND_COMMAND
-				ACALL	WAIT_500MS
                 JMP     DC_EXIT
 CLR_DISP:       MOV     SEND_COMMAND_PARAM, #01H            ;send command for clearing screen and returning cursor    
                 ACALL   SEND_COMMAND
 				MOV		R0, #40H							;reset R0 pointer
-DC_EXIT:        RET
+DC_EXIT:        ACALL	WAIT_500MS
+				RET
 
 ; ALT INPUT ROUTINE
 ; SENDS HEXADECIMAL VALUE TO THE DISPLAY
@@ -276,7 +279,7 @@ AI_EXIT:        RET
 ; ================================================================
 WAIT_500MS:     MOV     SECOND_COUNT, #0d                    ;reset counter
 RCK:            MOV     A, SECOND_COUNT
-                CJNE    A, #10d, RCK                         ;count to 10 for 500ms 
+                CJNE    A, #5d, RCK                         ;count to 10 for 250ms 
                 RET                                          ;return
                 
                 
